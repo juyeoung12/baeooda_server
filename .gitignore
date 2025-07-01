@@ -1,0 +1,18 @@
+# 환경변수 파일 무시
+.env
+
+# node_modules 폴더 무시
+node_modules/
+
+# 로그 파일 무시
+*.log
+
+# Vite 캐시 무시
+.vite/
+
+# 기타 임시 파일
+.DS_Store
+
+.env.*
+server/.env
+client/.env
