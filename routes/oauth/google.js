@@ -8,7 +8,7 @@ const getRandomProfileImage = require('../../utils/randomProfileImage');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI = 'http://localhost:5173/oauth/google';
+const GOOGLE_REDIRECT_URI = 'https://baeooda.vercel.app/oauth/google';  // ✅ 배포용 주소로 수정
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 router.post('/', async (req, res) => {
@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
       code,
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
-      redirect_uri: GOOGLE_REDIRECT_URI,
+      redirect_uri: GOOGLE_REDIRECT_URI,  // ✅ 배포 주소 사용
       grant_type: 'authorization_code',
     });
 

@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
 
-const verificationCodes = {}; // { email: code }
+const verificationCodes = {}; // TODO: production에서는 Redis or DB 사용 추천
 
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
   auth: {
-    user: process.env.EMAIL_USER, // ex: your@gmail.com
+    user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 });
@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 // 이메일 전송
 router.post('/send', async (req, res) => {
   const { email } = req.body;
-  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 숫자
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
     await transporter.sendMail({
@@ -26,10 +26,10 @@ router.post('/send', async (req, res) => {
     });
 
     verificationCodes[email] = code;
-    res.sendStatus(200);
+    res.status(200).json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).send('이메일 전송 실패');
+    console.error('이메일 전송 실패:', err.message);
+    res.status(500).json({ success: false, message: '이메일 전송 실패' });
   }
 });
 
@@ -37,12 +37,12 @@ router.post('/send', async (req, res) => {
 router.post('/verify', (req, res) => {
   const { email, code } = req.body;
 
-  if (verificationCodes[email] && verificationCodes[email] === code) {
+  if (verificationCodes[email] === code) {
     delete verificationCodes[email];
-    res.sendStatus(200);
-  } else {
-    res.status(400).send('인증번호가 일치하지 않습니다.');
+    return res.status(200).json({ success: true });
   }
+
+  res.status(400).json({ success: false, message: '인증번호가 일치하지 않습니다.' });
 });
 
 module.exports = router;

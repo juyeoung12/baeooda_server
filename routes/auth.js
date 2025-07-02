@@ -14,9 +14,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 router.post('/signup', async (req, res) => {
   let { name, email, username, password, year, month, day, profileImage } = req.body;
 
-  year = year || null;
-  month = month || null;
-  day = day || null;
+  year = year === '' ? null : year;
+  month = month === '' ? null : month;
+  day = day === '' ? null : day;
 
   try {
     const idCheck = await db.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -33,7 +33,7 @@ router.post('/signup', async (req, res) => {
     const nickname = generateRandomNickname();
     if (!profileImage) profileImage = getRandomProfileImage();
 
-    const sql = `INSERT INTO users (name, email, username, password, year, month, day, profileImage, nickname, provider)
+    const sql = `INSERT INTO users (name, email, username, password, year, month, day, profileimage, nickname, provider)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'local')`;
 
     await db.query(sql, [name, email, username, hashedPassword, year, month, day, profileImage, nickname]);
@@ -66,7 +66,7 @@ router.post('/login', async (req, res) => {
 
     if (!user.profileimage) {
       const newImage = getRandomProfileImage();
-      await db.query('UPDATE users SET profileImage = $1 WHERE id = $2', [newImage, user.id]);
+      await db.query('UPDATE users SET profileimage = $1 WHERE id = $2', [newImage, user.id]);
       user.profileimage = newImage;
     }
 
@@ -106,7 +106,6 @@ router.get('/me', authMiddleware, async (req, res) => {
       birth = `${user.year}-${paddedMonth}-${paddedDay}`;
     }
 
-
     res.json({
       id: user.id,
       username: user.username,
@@ -128,10 +127,7 @@ router.post('/find-id', async (req, res) => {
   const { name, email } = req.body;
 
   try {
-    const result = await db.query(
-      'SELECT username FROM users WHERE name = $1 AND email = $2',
-      [name, email]
-    );
+    const result = await db.query('SELECT username FROM users WHERE name = $1 AND email = $2', [name, email]);
 
     if (result.rows.length > 0) {
       res.json({ success: true, username: result.rows[0].username });
@@ -151,16 +147,13 @@ router.post('/reset-password', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM users WHERE username = $1 AND email = $2', [username, email]);
 
-    if (result.rows.length === 0) {
-      return res.json({ success: false });
-    }
+    if (result.rows.length === 0) return res.json({ success: false });
 
     const user = result.rows[0];
     const tempPassword = Math.random().toString(36).slice(2, 10);
     const hashed = await bcrypt.hash(tempPassword, 10);
 
     await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
-
     await sendEmail(email, `임시 비밀번호는 ${tempPassword} 입니다.`);
 
     res.json({ success: true });
