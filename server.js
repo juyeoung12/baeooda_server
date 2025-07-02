@@ -9,11 +9,19 @@ const emailRoutes = require('./routes/email');
 
 const app = express();
 
-// ✅ CORS 설정
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://baeooda-92yjsjtna-dlwnduds-projects.vercel.app'
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS 차단: 허용되지 않은 origin입니다.'));
+  },
+  credentials: true
 }));
 
 // ✅ JSON 요청 파싱
