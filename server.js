@@ -10,8 +10,8 @@ const emailRoutes = require('./routes/email');
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:5173',
-  'https://baeooda-92yjsjtna-dlwnduds-projects.vercel.app'
+  'https://baeooda.vercel.app',    // ✅ 프론트엔드 주소
+  'http://localhost:5173'          // ✅ 로컬 개발 환경
 ];
 
 app.use(cors({
@@ -23,6 +23,8 @@ app.use(cors({
   },
   credentials: true
 }));
+
+app.options('*', cors());
 
 // ✅ JSON 요청 파싱
 app.use(express.json());
