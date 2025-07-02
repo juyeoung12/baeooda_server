@@ -12,10 +12,10 @@ const sendEmail = async (to, tempPassword) => {
   const mailOptions = {
     from: `"배우다 고객센터" <${process.env.EMAIL_USER}>`, // 발신자
     to,                                                  // 수신자
-    subject: '🔒 비밀번호 임시 비밀번호 안내',                  // 제목
+    subject: '🔒 임시 비밀번호 안내',                  // 제목
     html: `
       <p>안녕하세요, <strong>배우다</strong>입니다.</p>
-      <p>요청하신 <strong style="color:#f76f15">${tempPassword}</strong></p>
+      <p>요청하신 임시 비밀번호는 <strong style="color:#f76f15">${tempPassword}</strong></p>
       <p style="margin-top:20px;">감사합니다.</p>
     `
   };

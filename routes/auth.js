@@ -14,19 +14,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 router.post('/signup', async (req, res) => {
   let { name, email, username, password, year, month, day, profileImage } = req.body;
 
-  // ✅ 빈 값일 경우 null로 처리
   year = year || null;
   month = month || null;
   day = day || null;
 
   try {
-    const [idCheck] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-    if (idCheck.length > 0) {
+    const idCheck = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (idCheck.rows.length > 0) {
       return res.status(400).json({ message: '이미 존재하는 아이디입니다.' });
     }
 
-    const [emailCheck] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (emailCheck.length > 0) {
+    const emailCheck = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: '이미 사용 중인 이메일입니다.' });
     }
 
@@ -35,7 +34,7 @@ router.post('/signup', async (req, res) => {
     if (!profileImage) profileImage = getRandomProfileImage();
 
     const sql = `INSERT INTO users (name, email, username, password, year, month, day, profileImage, nickname, provider)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local')`;
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'local')`;
 
     await db.query(sql, [name, email, username, hashedPassword, year, month, day, profileImage, nickname]);
 
@@ -46,14 +45,13 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-
 // ✅ 로그인
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-    const user = users[0];
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    const user = result.rows[0];
 
     if (!user) return res.status(401).json({ message: '아이디 틀림' });
 
@@ -62,14 +60,14 @@ router.post('/login', async (req, res) => {
 
     if (!user.nickname) {
       const newNickname = generateRandomNickname();
-      await db.query('UPDATE users SET nickname = ? WHERE id = ?', [newNickname, user.id]);
+      await db.query('UPDATE users SET nickname = $1 WHERE id = $2', [newNickname, user.id]);
       user.nickname = newNickname;
     }
 
-    if (!user.profileImage) {
+    if (!user.profileimage) {
       const newImage = getRandomProfileImage();
-      await db.query('UPDATE users SET profileImage = ? WHERE id = ?', [newImage, user.id]);
-      user.profileImage = newImage;
+      await db.query('UPDATE users SET profileImage = $1 WHERE id = $2', [newImage, user.id]);
+      user.profileimage = newImage;
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
@@ -83,7 +81,7 @@ router.post('/login', async (req, res) => {
         year: user.year,
         month: user.month,
         day: user.day,
-        profileImage: user.profileImage,
+        profileImage: user.profileimage,
         nickname: user.nickname,
         provider: user.provider || 'local'
       }
@@ -94,16 +92,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ✅ 사용자 정보 확인 (토큰 필요)
+// ✅ 사용자 정보 확인
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const [users] = await db.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
-    const user = users[0];
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
 
-    const birth = (user.year && user.month && user.day)
-  ? `${user.year}-${String(user.month).padStart(2, '0')}-${String(user.day).padStart(2, '0')}`
-  : null;
+    let birth = null;
+    if (user.year !== null && user.month !== null && user.day !== null) {
+      const paddedMonth = String(user.month).padStart(2, '0');
+      const paddedDay = String(user.day).padStart(2, '0');
+      birth = `${user.year}-${paddedMonth}-${paddedDay}`;
+    }
+
 
     res.json({
       id: user.id,
@@ -111,7 +113,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       email: user.email,
       name: user.name,
       birth,
-      profileImage: user.profileImage,
+      profileImage: user.profileimage,
       nickname: user.nickname,
       provider: user.provider || 'local'
     });
@@ -121,19 +123,18 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
-
 // ✅ 아이디 찾기
 router.post('/find-id', async (req, res) => {
   const { name, email } = req.body;
 
   try {
-    const [rows] = await db.query(
-      'SELECT username FROM users WHERE name = ? AND email = ?',
+    const result = await db.query(
+      'SELECT username FROM users WHERE name = $1 AND email = $2',
       [name, email]
     );
 
-    if (rows.length > 0) {
-      res.json({ success: true, username: rows[0].username });
+    if (result.rows.length > 0) {
+      res.json({ success: true, username: result.rows[0].username });
     } else {
       res.json({ success: false });
     }
@@ -148,22 +149,23 @@ router.post('/reset-password', async (req, res) => {
   const { username, email } = req.body;
 
   try {
-    const [user] = await db.query('SELECT * FROM users WHERE username = ? AND email = ?', [username, email]);
+    const result = await db.query('SELECT * FROM users WHERE username = $1 AND email = $2', [username, email]);
 
-    if (user.length === 0) {
+    if (result.rows.length === 0) {
       return res.json({ success: false });
     }
 
+    const user = result.rows[0];
     const tempPassword = Math.random().toString(36).slice(2, 10);
     const hashed = await bcrypt.hash(tempPassword, 10);
 
-    await db.query('UPDATE users SET password = ? WHERE id = ?', [hashed, user[0].id]);
+    await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, user.id]);
 
     await sendEmail(email, `임시 비밀번호는 ${tempPassword} 입니다.`);
 
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('비밀번호 재설정 오류:', err.message);
     res.status(500).json({ success: false });
   }
 });

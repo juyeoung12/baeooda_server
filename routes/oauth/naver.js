@@ -45,20 +45,19 @@ router.post('/', async (req, res) => {
     const username = `naver_${profile.id}`;
 
     let user;
-    const [existing] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) {
-      user = existing[0];
+    const existing = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (existing.rows.length > 0) {
+      user = existing.rows[0];
     } else {
       const nickname = generateRandomNickname();
       const profileImage = getRandomProfileImage();
 
-      const [insertResult] = await db.query(
-        'INSERT INTO users (username, email, name, provider, profileImage, nickname) VALUES (?, ?, ?, ?, ?, ?)',
+      const insertResult = await db.query(
+        'INSERT INTO users (username, email, name, provider, profileImage, nickname) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
         [username, email, name, 'naver', profileImage, nickname]
       );
 
-      const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [insertResult.insertId]);
-      user = rows[0];
+      user = insertResult.rows[0];
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
@@ -77,7 +76,7 @@ router.post('/', async (req, res) => {
         username: user.username,
         email: user.email,
         nickname: user.nickname,
-        profileImage: user.profileImage,
+        profileImage: user.profileimage, // PostgreSQL은 소문자로 자동 변환됨
         provider: user.provider || 'naver'
       }
     });

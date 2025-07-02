@@ -43,13 +43,6 @@ router.post('/send', async (req, res) => {
       });
 
 
-
-
-
-
-
-
-
     verificationCodes[email] = code;
     console.log(`✅ ${email} 에게 보낸 인증번호: ${code}`);
     res.status(200).json({ message: '인증번호 전송 완료' });

@@ -1,14 +1,15 @@
-require('dotenv').config(); // 상단에 추가
-const mysql = require('mysql2/promise');
+require('dotenv').config();
+const { Pool } = require('pg');
 
-const db = mysql.createPool({
+const db = new Pool({
   host: process.env.DB_HOST,
+  port: process.env.DB_PORT, // PostgreSQL 포트도 명시
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  ssl: {
+    rejectUnauthorized: false  // Render에서 필요함
+  }
 });
 
 module.exports = db;
